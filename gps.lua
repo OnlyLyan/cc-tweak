@@ -2,7 +2,8 @@
 -- Funciona em Pocket Computer e PC
 -- Mova apenas este arquivo para qualquer computador
 
-local GPS_CHANNEL = 65534
+local GPS_CHANNEL       = 65534
+local GPS_TRACK_CHANNEL = 6565   -- canal de broadcast da posicao do pocket
 local W = term.getSize()
 local isPocket = W <= 26
 
@@ -169,6 +170,14 @@ local function modLocalizar()
             local resp = atualizar()
             x, y, z = calcPosicao(resp)
             n = #resp
+            -- broadcast para monitor externo
+            if x then
+                modem.transmit(GPS_TRACK_CHANNEL, GPS_TRACK_CHANNEL, {
+                    type="gps_pos",
+                    x=math.floor(x), y=math.floor(y), z=math.floor(z),
+                    id=os.getComputerID()
+                })
+            end
             cls()
             print("=== GPS ===")
             print()
@@ -479,6 +488,111 @@ local function modLimpar()
 end
 
 -- ============================================================
+-- MODULO: MONITOR 2x2
+-- ============================================================
+
+local function modMonitor()
+    local mon = peripheral.find("monitor")
+    if not mon then
+        header("Monitor")
+        term.setTextColor(colors.red)
+        print("Nenhum monitor encontrado.")
+        print("Conecte um monitor 2x2 ao PC.")
+        term.setTextColor(colors.white)
+        aguardarTecla(); return
+    end
+
+    local modem = peripheral.find("modem", function(_,m) return m.isWireless() end)
+    if not modem then
+        header("Monitor")
+        term.setTextColor(colors.red)
+        print("Sem modem wireless.")
+        term.setTextColor(colors.white)
+        aguardarTecla(); return
+    end
+
+    mon.setTextScale(0.5)
+    local mw, mh = mon.getSize()
+
+    local function monCls() mon.clear(); mon.setCursorPos(1,1) end
+
+    local function monCenter(y, texto, cor)
+        mon.setCursorPos(math.floor((mw - #texto) / 2) + 1, y)
+        if cor then mon.setTextColor(cor) end
+        mon.write(texto)
+        mon.setTextColor(colors.white)
+    end
+
+    local function desenhar(dados, segundos)
+        monCls()
+        mon.setBackgroundColor(colors.black)
+        mon.clear()
+
+        local linha = 2
+        monCenter(linha, "[ GPS TRACKER ]", colors.yellow); linha = linha + 2
+
+        if dados then
+            monCenter(linha,   string.format("X:  %d", dados.x), colors.green);  linha = linha + 2
+            monCenter(linha,   string.format("Y:  %d", dados.y), colors.green);  linha = linha + 2
+            monCenter(linha,   string.format("Z:  %d", dados.z), colors.green);  linha = linha + 2
+            linha = linha + 1
+            monCenter(linha,   string.format("PC ID: %d", dados.id), colors.lightGray); linha = linha + 1
+            local ageStr = segundos < 5 and "ao vivo" or string.format("%ds atras", segundos)
+            monCenter(linha,   ageStr, segundos < 5 and colors.lime or colors.orange)
+        else
+            monCenter(linha, "Aguardando pocket...", colors.gray)
+            monCenter(linha+2, "Rode [1] Localizar", colors.gray)
+            monCenter(linha+3, "no pocket computer.", colors.gray)
+        end
+    end
+
+    modem.open(GPS_TRACK_CHANNEL)
+
+    -- terminal: instrucao de saida
+    cls()
+    print("=== Monitor GPS ativo ===")
+    print()
+    print("Exibindo no monitor externo.")
+    print("Pocket: rode [1] Localizar.")
+    print()
+    print("Pressione Q para voltar.")
+
+    desenhar(nil, 0)
+
+    local ultimoDados = nil
+    local ultimoTempo = 0
+
+    while true do
+        local ev = {os.pullEvent()}
+
+        if ev[1] == "modem_message" and ev[3] == GPS_TRACK_CHANNEL then
+            local msg = ev[5]
+            if type(msg) == "table" and msg.type == "gps_pos" then
+                ultimoDados = msg
+                ultimoTempo = os.clock()
+                desenhar(ultimoDados, 0)
+            end
+
+        elseif ev[1] == "timer" then
+            if ultimoDados then
+                local age = math.floor(os.clock() - ultimoTempo)
+                desenhar(ultimoDados, age)
+            end
+
+        elseif ev[1] == "char" and (ev[2] == "q" or ev[2] == "Q") then
+            break
+        elseif ev[1] == "key" and ev[2] == keys.q then
+            break
+        end
+
+        -- timer de atualizacao de idade
+        os.startTimer(1)
+    end
+
+    modem.close(GPS_TRACK_CHANNEL)
+end
+
+-- ============================================================
 -- MENU PRINCIPAL
 -- ============================================================
 
@@ -488,6 +602,7 @@ local opcoes = {
     {k="3", l="Diagnostico",  f=modDiag},
     {k="4", l="Calibrar Host",f=modCalibrar},
     {k="5", l="Limpar",       f=modLimpar},
+    {k="6", l="Monitor 2x2",  f=modMonitor},
 }
 
 while true do
@@ -506,7 +621,7 @@ while true do
     print("  [Q] Sair")
     print()
     io.write("> ")
-    local c = lerOpcao({"1","2","3","4","5","q"})
+    local c = lerOpcao({"1","2","3","4","5","6","q"})
     if c=="q" then break end
     for _,op in ipairs(opcoes) do
         if c==op.k then op.f(); break end
