@@ -78,9 +78,9 @@ if not hw then
     os.reboot()
 end
 
-print("OK — Altitude: " .. tostring(hw.altSensor.getHeight()))
-print("OK — SpeedCtrl: " .. hw.speedMethod)
-print("OK — Router: " .. hw.routerName)
+print("OK - Altitude: " .. tostring(hw.altSensor.getHeight()))
+print("OK - SpeedCtrl: " .. hw.speedMethod)
+print("OK - Router: " .. hw.routerName)
 sleep(0.5)
 
 local cfg = loadConfig()

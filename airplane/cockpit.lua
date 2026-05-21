@@ -15,7 +15,7 @@ for _, name in ipairs(peripheral.getNames()) do
 end
 
 if not routerName then
-    printError("ERRO: Wireless modem não encontrado.")
+    printError("ERRO: Wireless modem nao encontrado.")
     return
 end
 
