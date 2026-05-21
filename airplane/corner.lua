@@ -42,13 +42,13 @@ end
 local function setupMenu(cfg)
     term.clear()
     term.setCursorPos(1, 1)
-    print("=== AVIÃO — CONFIGURAÇÃO ===")
+    print("=== AVIAO - CONFIGURACAO ===")
     print("")
-    print("Qual é o seu canto?")
+    print("Qual e o seu canto?")
     print(" [1] Frente-Esquerda  (FL)")
     print(" [2] Frente-Direita   (FR)")
-    print(" [3] Trás-Esquerda    (RL)")
-    print(" [4] Trás-Direita     (RR)")
+    print(" [3] Tras-Esquerda    (RL)")
+    print(" [4] Tras-Direita     (RR)")
     print("")
     print("Pressione 1-4:")
     while true do
@@ -68,7 +68,7 @@ end
 
 term.clear()
 term.setCursorPos(1, 1)
-print("Detectando periféricos...")
+print("Detectando perifericos...")
 
 local hw, err = detect.detect()
 if not hw then

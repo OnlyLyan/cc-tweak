@@ -107,23 +107,23 @@ local function drawLoop()
 
         term.clear()
         term.setCursorPos(1, 1)
-        print("╔══════════════════════════════╗")
-        print("║   AVIÃO — CONTROLE DE VOO   ║")
-        print("╠══════════════════════════════╣")
-        print(string.format("║ Altitude alvo:  %5d blocos  ║", state.target_alt))
-        print(string.format("║ Altitude atual: %5.1f         ║", avg))
-        print(string.format("║ Pitch: %+5.2f°   Roll: %+5.2f°  ║", pitch, roll))
-        print("╠══════════════════════════════╣")
-        print(string.format("║ FL:%s   FR:%s       ║", fmt(FL), fmt(FR)))
-        print(string.format("║ RL:%s   RR:%s       ║", fmt(RL), fmt(RR)))
-        print("╠══════════════════════════════╣")
-        print("║ [↑/↓] ±1    [PgUp/Dn] ±10   ║")
-        print("║ [E] On/Off  [Q] Sair         ║")
-        print(string.format("║ Estabilização: %-12s  ║",
+        print("+================================+")
+        print("|   AVIAO - CONTROLE DE VOO     |")
+        print("+================================+")
+        print(string.format("| Altitude alvo:  %5d blocos   |", state.target_alt))
+        print(string.format("| Altitude atual: %5.1f          |", avg))
+        print(string.format("| Pitch: %+5.2f    Roll: %+5.2f   |", pitch, roll))
+        print("+--------------------------------+")
+        print(string.format("| FL:%s   FR:%s        |", fmt(FL), fmt(FR)))
+        print(string.format("| RL:%s   RR:%s        |", fmt(RL), fmt(RR)))
+        print("+--------------------------------+")
+        print("| [^/v] +-1   [PgUp/Dn] +-10   |")
+        print("| [E] On/Off  [Q] Sair          |")
+        print(string.format("| Estabilizacao: %-12s  |",
             state.enabled and "ATIVA" or "INATIVA"))
-        print("╚══════════════════════════════╝")
+        print("+================================+")
 
-        sleep(0.2)
+        sleep(0.5)
     end
 end
 
