@@ -13,10 +13,11 @@ local CFG_FILE = "config"
 local DEFAULTS = {
     base_speed   = 256,
     max_speed    = 512,
-    kA           = 3,    -- ganho de altitude (menor = menos agressivo)
+    kA           = 2,    -- ganho de altitude
     kP           = 2,    -- ganho de pitch
     kR           = 2,    -- ganho de roll
-    smooth       = 0.15, -- suavizacao exponencial (0.05=lento, 0.5=rapido)
+    smooth       = 0.05, -- suavizacao (0.05=lento/estavel, 0.3=rapido)
+    dead_band    = 3,    -- ignora erros menores que X blocos
     target_alt   = 80,
 }
 
@@ -151,23 +152,36 @@ end
 -- ── Loop: controle de velocidade ─────────────────────────────────────────────
 
 local function controlLoop()
-    local alpha = cfg.smooth or 0.15
+    local alpha     = cfg.smooth    or 0.05
+    local dead_band = cfg.dead_band or 3
     while true do
         local target_rpm
         if state.enabled then
+            -- Calcula altitude media atual
+            local sum, n = 0, 0
+            for _, v in pairs(state.heights) do sum = sum + v; n = n + 1 end
+            local avg = n > 0 and (sum / n) or state.target_alt
+
+            -- Dead band: so corrige se erro for maior que dead_band blocos
+            local alt_err = state.target_alt - avg
+            local eff_target = state.target_alt
+            if math.abs(alt_err) < dead_band then
+                eff_target = avg  -- finge que ja esta no alvo, sem correcao
+            end
+
             local params = {
                 base_speed = cfg.base_speed,
                 max_speed  = cfg.max_speed,
                 kA         = cfg.kA,
                 kP         = cfg.kP,
                 kR         = cfg.kR,
-                target_alt = state.target_alt,
+                target_alt = eff_target,
             }
             target_rpm = stabilize.calcSpeed(params, state.heights, cfg.corner)
         else
             target_rpm = cfg.base_speed
         end
-        -- Suavizacao exponencial: muda o RPM gradualmente, evita oscilaçao
+        -- Suavizacao exponencial: RPM muda devagar, sem pulos bruscos
         state.current_rpm = alpha * target_rpm + (1 - alpha) * state.current_rpm
         hw.speedCtrl[cfg.speed_method](math.floor(state.current_rpm))
         sleep(0.1)
