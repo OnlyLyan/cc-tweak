@@ -13,10 +13,11 @@ local CFG_FILE = "config"
 local DEFAULTS = {
     base_speed   = 256,
     max_speed    = 512,
-    kA           = 10,
-    kP           = 5,
-    kR           = 5,
-    target_alt   = 80,   -- fallback se cockpit não responder
+    kA           = 3,    -- ganho de altitude (menor = menos agressivo)
+    kP           = 2,    -- ganho de pitch
+    kR           = 2,    -- ganho de roll
+    smooth       = 0.15, -- suavizacao exponencial (0.05=lento, 0.5=rapido)
+    target_alt   = 80,
 }
 
 local function loadConfig()
@@ -107,6 +108,7 @@ local state = {
     enabled    = true,
     heights    = {},
     last_seen  = {},
+    current_rpm = cfg.base_speed,  -- RPM suavizado atual
 }
 
 -- ── Loop: enviar altura ───────────────────────────────────────────────────────
@@ -149,8 +151,9 @@ end
 -- ── Loop: controle de velocidade ─────────────────────────────────────────────
 
 local function controlLoop()
+    local alpha = cfg.smooth or 0.15
     while true do
-        local rpm
+        local target_rpm
         if state.enabled then
             local params = {
                 base_speed = cfg.base_speed,
@@ -160,12 +163,13 @@ local function controlLoop()
                 kR         = cfg.kR,
                 target_alt = state.target_alt,
             }
-            rpm = stabilize.calcSpeed(params, state.heights, cfg.corner)
+            target_rpm = stabilize.calcSpeed(params, state.heights, cfg.corner)
         else
-            rpm = cfg.base_speed
+            target_rpm = cfg.base_speed
         end
-        -- Chama o método detectado dinamicamente (setTargetSpeed, setRPM, etc.)
-        hw.speedCtrl[cfg.speed_method](rpm)
+        -- Suavizacao exponencial: muda o RPM gradualmente, evita oscilaçao
+        state.current_rpm = alpha * target_rpm + (1 - alpha) * state.current_rpm
+        hw.speedCtrl[cfg.speed_method](math.floor(state.current_rpm))
         sleep(0.1)
     end
 end
@@ -183,8 +187,9 @@ local function displayLoop()
         term.setCursorPos(1, 1)
         print(string.format("[ %s ]  Alt: %.1f  Alvo: %d",
             cfg.corner, h or 0, state.target_alt))
-        print(string.format("Avg: %.1f  %s",
-            avg, state.enabled and "ATIVO" or "INATIVO"))
+        print(string.format("Avg: %.1f  RPM: %d  %s",
+            avg, math.floor(state.current_rpm),
+            state.enabled and "ATIVO" or "INATIVO"))
         print(string.format("FL:%-5s FR:%-5s",
             state.heights.FL and string.format("%.1f", state.heights.FL) or "?",
             state.heights.FR and string.format("%.1f", state.heights.FR) or "?"))
